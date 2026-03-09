@@ -31,8 +31,5 @@ Thumbs.db
 # Census boundary shapefiles (cached by generate_charts.py)
 data/shapefiles/
 
-# Large raw data files (download links in README.md)
-# Uncomment these if raw data files exceed 100MB:
-# data/raw-data/egrid2023_data_rev2.xlsx
-# data/raw-data/Aqueduct40_baseline_monthly_y2023m07d05.csv
-# data/raw-data/Aqueduct40_future_annual_y2023m07d05.csv
+# Large raw data files — excluded from git (too large for GitHub)
+data/Data/
