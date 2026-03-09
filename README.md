@@ -21,7 +21,7 @@
 
 ## Live Dashboard
 
-🔗 **[datacenter-sustainability.streamlit.app](https://datacenter-footprint.streamlit.app/)**
+🔗 **[datacenter-sustainability.streamlit.app](https://dc-sustainability.streamlit.app/)**
 
 > The app may take **30–60 seconds to wake up** if it has been idle on Streamlit Community Cloud.
 
