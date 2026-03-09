@@ -2,63 +2,80 @@
 
 **Spatial analysis of U.S. AI data center locations, grid carbon intensity, and regional water stress to evaluate sustainable siting policy.**
 
-> UChicago Harris School — DAP II (30538) Final Project, Winter 2026
->
+> UChicago Harris School — **DAP II (30538) Final Project**, Winter 2026  
 > **Authors:** Manav Mutneja (`manavm-afk`) · Ankit Dixit (`ankitdixit23`)
 
-## Research Question
+---
 
-How do the locations of AI/cloud data centers in the United States relate to local carbon intensity of the electricity grid and regional water stress — and what are the policy implications for sustainable data center siting?
+# Research Question
 
-### Sub-Questions
+**How do the locations of AI/cloud data centers in the United States relate to local carbon intensity of the electricity grid and regional water stress — and what are the policy implications for sustainable data center siting?**
+
+## Sub-Questions
+
 1. Which U.S. counties have the highest concentration of data centers, and how carbon-intensive is their local electricity grid?
 2. Are data centers disproportionately located in water-stressed regions?
 3. Under projected growth scenarios, how might future data center siting exacerbate or alleviate grid carbon and water stress?
 
-## Streamlit Dashboard
+---
 
-🔗 **[Live Dashboard](https://ai-datacenter-sustainability.streamlit.app)**
+# Streamlit Dashboard
 
-> **Note:** The Streamlit Community Cloud app may take 30–60 seconds to wake up if it has been idle. Please be patient on the first load.
+🔗 **Live Dashboard**  
+https://ai-datacenter-sustainability.streamlit.app
+
+> **Note:** The Streamlit Community Cloud app may take **30–60 seconds to wake up** if it has been idle.
 
 The interactive dashboard allows users to:
-- Explore a map of data center locations colored by grid carbon intensity or water stress
-- Compare states by carbon intensity vs. data center concentration
-- View future water stress projections under BAU, Optimistic, and Pessimistic scenarios (2030–2080)
-- Filter by state, CO₂ rate range, and water stress category
 
-## Setup
+- Explore a **map of data center locations** colored by carbon intensity or water stress
+- Compare **states by carbon intensity vs. data center concentration**
+- View **future water stress projections (2030–2080)** under BAU, Optimistic, and Pessimistic scenarios
+- Filter by **state, CO₂ rate range, and water stress category**
+
+---
+
+# Setup
+
+### Option A — Conda (recommended)
 
 ```bash
-# Option A: Conda (recommended)
 conda env create -f environment.yml
 conda activate dc_sustainability
+```
 
-# Option B: pip
+### Option B — pip
+
+```bash
 pip install -r requirements.txt
 ```
 
-## Project Structure
+---
+
+# Project Structure
 
 ```
 ├── README.md
 ├── requirements.txt
 ├── environment.yml
 ├── .gitignore
-├── final_project.qmd              # Writeup (Quarto, ≤3 pages)
-├── final_project_analysis.qmd     # Detailed analysis (Quarto)
-├── final_project.html              # Knitted HTML
-├── final_project.pdf               # Knitted PDF
+├── final_project.qmd
+├── final_project_analysis.qmd
+├── final_project.html
+├── final_project.pdf
+│
 ├── code/
-│   ├── download_data.py            # Downloads raw datasets (~77 MB)
-│   ├── preprocessing.py            # Data wrangling & merging
-│   └── generate_charts.py          # Static visualizations (6 PNGs)
+│   ├── download_data.py
+│   ├── preprocessing.py
+│   └── generate_charts.py
+│
 ├── data/
 │   ├── raw-data/
 │   │   ├── im3_open_source_data_center_atlas_v2026.02.09.csv
 │   │   ├── egrid2023_data_rev2.xlsx
 │   │   ├── Aqueduct40_baseline_monthly_y2023m07d05.csv
 │   │   └── Aqueduct40_future_annual_y2023m07d05.csv
+│   │
 │   └── derived-data/
 │       ├── datacenters_master.csv
 │       ├── datacenters_with_emissions.csv
@@ -68,6 +85,7 @@ pip install -r requirements.txt
 │       ├── aqueduct_annual_summary.csv
 │       ├── aqueduct_future_water_stress_na.csv
 │       └── water_stress_county_summary.csv
+│
 ├── output_charts/
 │   ├── fig1_top_states.png
 │   ├── fig2a_us_map_states.png
@@ -75,6 +93,7 @@ pip install -r requirements.txt
 │   ├── fig3_egrid_subregions.png
 │   ├── fig4_water_stress.png
 │   └── fig5_dual_risk_scatter.png
+│
 └── streamlit-app/
     ├── app.py
     ├── requirements.txt
@@ -85,75 +104,130 @@ pip install -r requirements.txt
     └── aqueduct_future_water_stress_na.csv
 ```
 
-## Data Sources
+---
+
+# Data Sources
 
 | Dataset | Source | Format | Granularity |
-|---------|--------|--------|-------------|
-| [IM3 Open Source Data Center Atlas](https://data.msdlive.org/records/65g71-a4731) | Pacific Northwest National Laboratory (PNNL/DOE) | CSV | Individual facility (lat/lon, county, sqft) |
-| [EPA eGRID 2023](https://www.epa.gov/egrid/detailed-data) | U.S. Environmental Protection Agency | XLSX | Plant, subregion, and state level |
-| [WRI Aqueduct 4.0](https://www.wri.org/applications/aqueduct/water-risk-atlas/) | World Resources Institute | CSV | HydroSHEDS catchment level |
+|--------|--------|--------|-------------|
+| **IM3 Open Source Data Center Atlas** | Pacific Northwest National Laboratory (PNNL / DOE) | CSV | Facility-level |
+| **EPA eGRID 2023** | U.S. Environmental Protection Agency | XLSX | Plant / grid subregion |
+| **WRI Aqueduct 4.0** | World Resources Institute | CSV | HydroSHEDS catchment |
 
-### Data Processing
+### Source Links
 
-`code/preprocessing.py` reads from `data/raw-data/` and writes to `data/derived-data/`:
-- Loads the IM3 data center atlas (1,479 facilities across 47 states)
-- Loads eGRID 2023 plant-level data and assigns each data center to the eGRID subregion of its nearest power plant (spatial KD-tree join)
-- Merges subregion-level CO₂ emission rates onto each data center
-- Computes annual water stress averages from Aqueduct 4.0 monthly baseline data
-- Merges water stress indicators via state-level aggregation
-- Produces future water stress projections for North American catchments
+IM3 Atlas  
+https://data.msdlive.org/records/65g71-a4731
 
-### Downloading Raw Data
+EPA eGRID  
+https://www.epa.gov/egrid/detailed-data
 
-All raw datasets are included in this repository (each file < 100 MB). To re-download from source:
+WRI Aqueduct  
+https://www.wri.org/applications/aqueduct/water-risk-atlas/
 
-```bash
-python code/download_data.py          # downloads all 4 datasets (~77 MB)
-python code/download_data.py --force  # re-download existing files
+---
+
+# Data Processing
+
+`code/preprocessing.py` reads raw datasets and generates derived analysis datasets.
+
+Steps performed:
+
+1. Load the **IM3 Data Center Atlas** (~1,479 facilities across 47 states)
+2. Assign each facility to the **nearest EPA eGRID power plant**
+3. Map facilities to **electricity grid subregions**
+4. Merge **CO₂ emission rates** from EPA eGRID
+5. Compute **baseline water stress metrics** from Aqueduct 4.0
+6. Aggregate water stress indicators to **state and county levels**
+7. Generate **future water stress projections (2030–2080)**
+
+Derived datasets are written to:
+
+```
+data/derived-data/
 ```
 
-Or manually:
-- **IM3 Atlas:** https://data.msdlive.org/records/65g71-a4731
-- **eGRID 2023:** https://www.epa.gov/egrid/detailed-data → "eGRID2023 Data File (XLSX)"
-- **Aqueduct 4.0:** https://www.wri.org/applications/aqueduct/water-risk-atlas/ → Baseline monthly and future annual CSVs
+---
 
-Save files to `data/raw-data/` with the exact filenames shown in the project structure above.
+# Downloading Raw Data
 
-## Usage
+All raw datasets are included in the repository.  
+To re-download them from source:
 
-1. Download raw data (if not already present):
-   ```bash
-   python code/download_data.py
-   ```
+```bash
+python code/download_data.py
+```
 
-2. Run preprocessing to generate derived datasets:
-   ```bash
-   python code/preprocessing.py
-   ```
+Force re-download:
 
-3. Generate static charts:
-   ```bash
-   python code/generate_charts.py
-   ```
+```bash
+python code/download_data.py --force
+```
 
-4. Launch the Streamlit dashboard locally:
-   ```bash
-   streamlit run streamlit-app/app.py
-   ```
+---
 
-5. Knit the writeup:
-   ```bash
-   quarto render final_project.qmd
-   ```
+# Usage
 
-## Key Findings
+### 1. Download raw data
 
-- **1,474 unique data centers** across 47 states, with Virginia (319), Texas (127), and California (112) leading
-- The average grid CO₂ rate at data center locations is **705 lb/MWh** — 19% below the national subregion average, suggesting some preference for cleaner grids
-- **~27% of data centers** are located in high or extremely high water stress areas (California, Texas, Arizona, Nevada)
-- **~250 data centers** face dual environmental risk: high grid carbon intensity (>700 lb/MWh) AND high water stress
-- Under business-as-usual projections, the share of high-stress catchments in North America increases through 2080, intensifying the urgency for water-conscious siting
+```bash
+python code/download_data.py
+```
 
-## License
+### 2. Run preprocessing
 
-MIT
+```bash
+python code/preprocessing.py
+```
+
+### 3. Generate static charts
+
+```bash
+python code/generate_charts.py
+```
+
+### 4. Launch the Streamlit dashboard
+
+```bash
+streamlit run streamlit-app/app.py
+```
+
+### 5. Render the project writeup
+
+```bash
+quarto render final_project.qmd
+```
+
+---
+
+# Key Findings
+
+- **1,474 unique data centers** across **47 U.S. states**
+- Virginia (319), Texas (127), and California (112) host the largest concentrations
+- The average electricity carbon intensity at data center locations is **~0.32 tCO₂e/MWh**
+- **~27% of data centers** are located in **high or extremely high water-stress regions**
+- Approximately **250 facilities face dual environmental risk**:
+  - High electricity carbon intensity
+  - High water stress
+
+Future projections suggest that **water stress may intensify across North America through 2080**, increasing the importance of sustainable data center siting strategies.
+
+---
+
+# Policy Implications
+
+The analysis suggests several policy considerations:
+
+- Encourage **data center development in lower-carbon electricity regions**
+- Incentivize **renewable energy procurement**
+- Require **water impact assessments** for new data center permits
+- Promote **water-efficient cooling technologies**
+- Integrate **water stress indicators into infrastructure planning**
+
+---
+
+# License
+
+MIT License
+
+© 2026 Ankit Dixit and Manav Mutneja
