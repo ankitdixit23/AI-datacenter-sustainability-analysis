@@ -19,7 +19,11 @@
 
 ---
 
+<<<<<<< HEAD
 # Streamlit Dashboard
+=======
+🔗 **[Live Dashboard](https://dc-sustainability.streamlit.app/)**
+>>>>>>> c4cc5165415a8ce890fb35589c3be1470f507907
 
 🔗 **Live Dashboard**  
 https://ai-datacenter-sustainability.streamlit.app
