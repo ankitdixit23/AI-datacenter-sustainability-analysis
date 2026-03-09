@@ -17,7 +17,7 @@ How do the locations of AI/cloud data centers in the United States relate to loc
 
 ## Streamlit Dashboard
 
-🔗 **[Live Dashboard](https://https://dc-sustainability.streamlit.app/)**
+🔗 **[Live Dashboard](https://dc-sustainability.streamlit.app/)**
 
 > **Note:** The Streamlit Community Cloud app may take 30–60 seconds to wake up if it has been idle. Please be patient on the first load.
 
