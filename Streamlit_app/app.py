@@ -308,7 +308,7 @@ def page_sq1():
     ]
 
     # ── KPIs ─────────────────────────────────────────────────────────────
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3 = st.columns([0.8, 1.4, 0.8])
     c1.metric("Facilities Shown", f"{len(filtered):,}")
     c2.metric("Avg CO₂ Rate", f"{filtered['co2_rate'].mean():.3f} tCO₂e/MWh")
     c3.metric("Avg Renewable %", f"{filtered['renewable_pct'].mean():.1f}%")
