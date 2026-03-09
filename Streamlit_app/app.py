@@ -155,7 +155,7 @@ def page_overview():
     state_df = load_state_summary()
 
     # ── KPI row ──────────────────────────────────────────────────────────
-    c1, c2, c3, c4 = st.columns([1.4, 1.4, 1.2, 1.0])
+    c1, c2, c3, c4 = st.columns([0.7, 0.7, 1.8, 0.8])
     c1.metric("Data Centers", f"{len(master):,}")
     c2.metric("States Covered", f"{master['state_abb'].nunique()}")
     c3.metric(
