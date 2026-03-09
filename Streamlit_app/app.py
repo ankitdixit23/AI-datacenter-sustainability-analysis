@@ -18,7 +18,6 @@ Data files (in same directory):
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 import altair as alt
 from pathlib import Path
 
@@ -66,6 +65,8 @@ st.markdown(
 
 DATA_DIR = Path(__file__).parent
 
+LB_TO_TONNES = 0.000453592
+
 
 # ══════════════════════════════════════════════════════════════════════════
 # DATA LOADING (cached)
@@ -74,8 +75,8 @@ DATA_DIR = Path(__file__).parent
 @st.cache_data
 def load_master():
     df = pd.read_csv(DATA_DIR / "datacenters_master.csv")
-    # Friendly column names for display
-    df["co2_rate"] = df["SRCO2RTA"]
+    # Convert EPA eGRID units: lb/MWh → tCO₂e/MWh
+    df["co2_rate"] = df["SRCO2RTA"] * LB_TO_TONNES
     df["renewable_pct"] = df["SRTRPR"] * 100  # convert 0-1 → 0-100
     df["water_stress_score"] = df["bws_annual_mean_score"]
     df["water_stress_label"] = df["bws_annual_label"]
@@ -84,12 +85,18 @@ def load_master():
 
 @st.cache_data
 def load_state_summary():
-    return pd.read_csv(DATA_DIR / "state_summary.csv")
+    df = pd.read_csv(DATA_DIR / "state_summary.csv")
+    if "mean_co2_rate" in df.columns:
+        df["mean_co2_rate_t"] = df["mean_co2_rate"] * LB_TO_TONNES
+    return df
 
 
 @st.cache_data
 def load_county_summary():
-    return pd.read_csv(DATA_DIR / "county_summary.csv")
+    df = pd.read_csv(DATA_DIR / "county_summary.csv")
+    if "co2_rate_lb_mwh" in df.columns:
+        df["co2_rate_t_mwh"] = df["co2_rate_lb_mwh"] * LB_TO_TONNES
+    return df
 
 
 @st.cache_data
@@ -111,20 +118,25 @@ page_names = {
     "SQ1: Carbon Intensity": "sq1",
     "SQ2: Water Stress": "sq2",
     "SQ3: Future Projections": "sq3",
+    "Dataset": "dataset",
 }
 
-st.sidebar.markdown('<div class="sidebar-title">USA Data Center Explorer</div>', unsafe_allow_html=True)
+st.sidebar.markdown(
+    '<div class="sidebar-title">USA Data Center Explorer</div>',
+    unsafe_allow_html=True,
+)
 st.sidebar.markdown("---")
 selected_page = st.sidebar.selectbox(
     "Navigate to:", list(page_names.keys())
 )
+
 
 # ══════════════════════════════════════════════════════════════════════════
 # PAGE: OVERVIEW
 # ══════════════════════════════════════════════════════════════════════════
 
 def page_overview():
-    st.title("The Environmental Footprint of US Data Center Infrastructure")
+    st.title("Ecological Burden of Data Centers in the United States")
     st.markdown(
         """
         **How do U.S. data center locations relate to grid carbon intensity
@@ -133,16 +145,22 @@ def page_overview():
         """
     )
 
+    st.caption(
+        "Data centers require large amounts of electricity and cooling. "
+        "This dashboard links facility locations to the carbon intensity of local electricity "
+        "and the water stress of the surrounding region."
+    )
+
     master = load_master()
     state_df = load_state_summary()
 
     # ── KPI row ──────────────────────────────────────────────────────────
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4 = st.columns([1.4, 1.4, 1.2, 1.0])
     c1.metric("Data Centers", f"{len(master):,}")
     c2.metric("States Covered", f"{master['state_abb'].nunique()}")
     c3.metric(
         "Avg CO₂ Rate",
-        f"{master['co2_rate'].mean():.0f} lb/MWh",
+        f"{master['co2_rate'].mean():.3f} tCO₂e/MWh",
     )
     ws_high = master["water_stress_label"].isin(
         ["High (40-80%)", "Extremely High (>80%)"]
@@ -153,19 +171,21 @@ def page_overview():
 
     # ── National map: all data centers ───────────────────────────────────
     st.subheader("National Map of U.S. Data Centers")
+    st.caption(
+        "Each circle is a data center. Larger circles indicate larger facilities by square footage. "
+        "Color shows either electricity carbon intensity or water stress."
+    )
 
-    # Color by carbon intensity
     color_by = st.radio(
         "Color data centers by:",
-        ["Carbon Intensity (CO₂ lb/MWh)", "Water Stress Score"],
+        ["Carbon Intensity (tCO₂e/MWh)", "Water Stress Score"],
         horizontal=True,
     )
 
     color_field = "co2_rate" if "Carbon" in color_by else "water_stress_score"
-    color_title = "CO₂ (lb/MWh)" if "Carbon" in color_by else "Water Stress Score"
+    color_title = "CO₂ (tCO₂e/MWh)" if "Carbon" in color_by else "Water Stress Score"
     color_scheme = "reds" if "Carbon" in color_by else "blues"
 
-    # US states background
     states_url = "https://cdn.jsdelivr.net/npm/vega-datasets@v1.29.0/data/us-10m.json"
     background = (
         alt.Chart(alt.topo_feature(states_url, "states"))
@@ -195,7 +215,7 @@ def page_overview():
                 alt.Tooltip("operator:N", title="Operator"),
                 alt.Tooltip("state:N", title="State"),
                 alt.Tooltip("county:N", title="County"),
-                alt.Tooltip("co2_rate:Q", title="CO₂ (lb/MWh)", format=".0f"),
+                alt.Tooltip("co2_rate:Q", title="CO₂ (tCO₂e/MWh)", format=".3f"),
                 alt.Tooltip("water_stress_score:Q", title="Water Stress Score", format=".1f"),
                 alt.Tooltip("sqft:Q", title="Sq Ft", format=",.0f"),
             ],
@@ -215,14 +235,14 @@ def page_overview():
             x=alt.X("dc_count:Q", title="Number of Data Centers"),
             y=alt.Y("state_abb:N", sort="-x", title="State"),
             color=alt.Color(
-                "mean_co2_rate:Q",
+                "mean_co2_rate_t:Q",
                 scale=alt.Scale(scheme="reds"),
-                title="Avg CO₂ Rate",
+                title="Avg CO₂ Rate (tCO₂e/MWh)",
             ),
             tooltip=[
                 alt.Tooltip("state:N"),
                 alt.Tooltip("dc_count:Q", title="Data Centers"),
-                alt.Tooltip("mean_co2_rate:Q", title="Avg CO₂ Rate", format=".0f"),
+                alt.Tooltip("mean_co2_rate_t:Q", title="Avg CO₂ Rate", format=".3f"),
                 alt.Tooltip("state_renewable_pct:Q", title="Renewable %", format=".1f"),
             ],
         )
@@ -244,6 +264,18 @@ def page_sq1():
         """
     )
 
+    st.info(
+        """
+        **Carbon intensity** measures how much greenhouse gas is emitted to generate electricity.
+        It is shown here in **tCO₂e/MWh** (metric tons of CO₂-equivalent per megawatt-hour).
+
+        Benchmarks:
+        - Very low-carbon electricity: close to **0.0 tCO₂e/MWh**
+        - Average U.S. grid: about **0.386 tCO₂e/MWh**
+        - Coal-heavy grid: can exceed **0.9 tCO₂e/MWh**
+        """
+    )
+
     master = load_master()
     county_df = load_county_summary()
 
@@ -256,10 +288,14 @@ def page_sq1():
     )
 
     co2_range = st.sidebar.slider(
-        "CO₂ emission rate (lb/MWh):",
-        min_value=int(master["co2_rate"].min()),
-        max_value=int(master["co2_rate"].max()),
-        value=(int(master["co2_rate"].min()), int(master["co2_rate"].max())),
+        "CO₂ emission rate (tCO₂e/MWh):",
+        min_value=float(round(master["co2_rate"].min(), 3)),
+        max_value=float(round(master["co2_rate"].max(), 3)),
+        value=(
+            float(round(master["co2_rate"].min(), 3)),
+            float(round(master["co2_rate"].max(), 3)),
+        ),
+        step=0.001,
     )
 
     # Apply filters
@@ -274,7 +310,7 @@ def page_sq1():
     # ── KPIs ─────────────────────────────────────────────────────────────
     c1, c2, c3 = st.columns(3)
     c1.metric("Facilities Shown", f"{len(filtered):,}")
-    c2.metric("Avg CO₂ Rate", f"{filtered['co2_rate'].mean():.0f} lb/MWh")
+    c2.metric("Avg CO₂ Rate", f"{filtered['co2_rate'].mean():.3f} tCO₂e/MWh")
     c3.metric("Avg Renewable %", f"{filtered['renewable_pct'].mean():.1f}%")
 
     st.markdown("---")
@@ -300,7 +336,7 @@ def page_sq1():
             color=alt.Color(
                 "co2_rate:Q",
                 scale=alt.Scale(scheme="redyellowgreen", reverse=True),
-                title="CO₂ (lb/MWh)",
+                title="CO₂ (tCO₂e/MWh)",
             ),
             tooltip=[
                 alt.Tooltip("name:N", title="Facility"),
@@ -308,7 +344,7 @@ def page_sq1():
                 alt.Tooltip("state:N"),
                 alt.Tooltip("county:N"),
                 alt.Tooltip("egrid_subregion:N", title="eGRID Subregion"),
-                alt.Tooltip("co2_rate:Q", title="CO₂ (lb/MWh)", format=".0f"),
+                alt.Tooltip("co2_rate:Q", title="CO₂ (tCO₂e/MWh)", format=".3f"),
                 alt.Tooltip("renewable_pct:Q", title="Renewable %", format=".1f"),
             ],
         )
@@ -319,6 +355,9 @@ def page_sq1():
 
     # ── Subregion comparison ─────────────────────────────────────────────
     st.subheader("Emission Rates by eGRID Subregion")
+    st.caption(
+        "eGRID subregions are EPA-defined power grid regions used to compare electricity emissions."
+    )
 
     subregion_agg = (
         filtered.groupby(["egrid_subregion", "egrid_subregion_name"])
@@ -335,7 +374,7 @@ def page_sq1():
         alt.Chart(subregion_agg)
         .mark_bar()
         .encode(
-            x=alt.X("mean_co2:Q", title="Avg CO₂ Emission Rate (lb/MWh)"),
+            x=alt.X("mean_co2:Q", title="Avg CO₂ Emission Rate (tCO₂e/MWh)"),
             y=alt.Y("egrid_subregion:N", sort="-x", title="eGRID Subregion"),
             color=alt.Color(
                 "mean_co2:Q",
@@ -345,7 +384,7 @@ def page_sq1():
             tooltip=[
                 alt.Tooltip("egrid_subregion_name:N", title="Subregion Name"),
                 alt.Tooltip("dc_count:Q", title="Data Centers"),
-                alt.Tooltip("mean_co2:Q", title="Avg CO₂", format=".0f"),
+                alt.Tooltip("mean_co2:Q", title="Avg CO₂", format=".3f"),
                 alt.Tooltip("mean_renewable:Q", title="Avg Renewable %", format=".1f"),
             ],
         )
@@ -355,6 +394,10 @@ def page_sq1():
 
     # ── Scatter: CO₂ vs renewable ────────────────────────────────────────
     st.subheader("Carbon Intensity vs. Renewable Share by County/State")
+    st.caption(
+        "Each point is a county. Higher points have more renewable generation. "
+        "Further-right points have more carbon-intensive electricity."
+    )
 
     county_filtered = county_df.copy()
     if selected_states:
@@ -364,21 +407,26 @@ def page_sq1():
         alt.Chart(county_filtered)
         .mark_circle(opacity=0.6)
         .encode(
-            x=alt.X("co2_rate_lb_mwh:Q", title="CO₂ Rate (lb/MWh)"),
-            y=alt.Y("renewable_pct:Q", title="Renewable Generation %", scale=alt.Scale(domain=[0, 1])),
+            x=alt.X("co2_rate_t_mwh:Q", title="CO₂ Rate (tCO₂e/MWh)"),
+            y=alt.Y(
+                "renewable_pct:Q",
+                title="Renewable Generation %",
+                scale=alt.Scale(domain=[0, 1]),
+            ),
             size=alt.Size("dc_count:Q", title="Data Centers", scale=alt.Scale(range=[20, 500])),
             color=alt.Color("state_abb:N", title="State"),
             tooltip=[
                 alt.Tooltip("county:N"),
                 alt.Tooltip("state_abb:N"),
                 alt.Tooltip("dc_count:Q", title="Data Centers"),
-                alt.Tooltip("co2_rate_lb_mwh:Q", title="CO₂ Rate", format=".0f"),
+                alt.Tooltip("co2_rate_t_mwh:Q", title="CO₂ Rate", format=".3f"),
                 alt.Tooltip("renewable_pct:Q", title="Renewable %", format=".2f"),
             ],
         )
         .properties(width=800, height=450)
     )
     st.altair_chart(scatter, use_container_width=True)
+
 
 # ══════════════════════════════════════════════════════════════════════════
 # PAGE: SQ2 — WATER STRESS
@@ -392,8 +440,16 @@ def page_sq2():
         """
     )
 
+    st.info(
+        """
+        **Water stress** compares water demand with available supply.
+        Higher values mean a region already uses a large share of its available water.
+        This matters because data centers often use water for cooling.
+        """
+    )
+
     master = load_master()
-    water = load_water_detail()
+    _water = load_water_detail()
 
     # ── Sidebar filters ──────────────────────────────────────────────────
     st.sidebar.markdown("### SQ2 Filters")
@@ -435,7 +491,6 @@ def page_sq2():
     # ── Map: water stress ────────────────────────────────────────────────
     st.subheader("Data Centers Colored by Water Stress")
 
-    # Assign numeric for ordered coloring
     stress_order = {
         "Low (<10%)": 0,
         "Low-Medium (10-20%)": 1,
@@ -492,7 +547,6 @@ def page_sq2():
         .size()
         .reset_index(name="count")
     )
-    # Ensure order
     stress_counts["order"] = stress_counts["water_stress_label"].map(stress_order)
     stress_counts = stress_counts.sort_values("order")
 
@@ -535,14 +589,14 @@ def page_sq2():
         .mark_circle(opacity=0.5)
         .encode(
             x=alt.X("water_stress_score:Q", title="Water Stress Score (0–5)"),
-            y=alt.Y("co2_rate:Q", title="CO₂ Rate (lb/MWh)"),
+            y=alt.Y("co2_rate:Q", title="CO₂ Rate (tCO₂e/MWh)"),
             size=alt.Size("sqft:Q", title="Facility Sq Ft", scale=alt.Scale(range=[10, 300])),
             color=alt.Color("state_abb:N", title="State"),
             tooltip=[
                 alt.Tooltip("name:N", title="Facility"),
                 alt.Tooltip("state:N"),
                 alt.Tooltip("water_stress_score:Q", format=".2f"),
-                alt.Tooltip("co2_rate:Q", format=".0f"),
+                alt.Tooltip("co2_rate:Q", title="CO₂ (tCO₂e/MWh)", format=".3f"),
                 alt.Tooltip("sqft:Q", format=",.0f"),
             ],
         )
@@ -574,7 +628,6 @@ def page_sq3():
     label_cols = [c for c in future.columns if c.endswith("_ws_x_l")]
     for col in label_cols:
         future[col] = future[col].str.strip().str.title()
-        # Fix specific known patterns
         future[col] = future[col].replace({
             "Low (<10%)": "Low (<10%)",
             "Low-Medium (10-20%)": "Low-Medium (10-20%)",
@@ -591,7 +644,11 @@ def page_sq3():
         "Scenario:",
         ["Business as Usual (BAU)", "Optimistic", "Pessimistic"],
     )
-    scenario_prefix = {"Business as Usual (BAU)": "bau", "Optimistic": "opt", "Pessimistic": "pes"}[scenario]
+    scenario_prefix = {
+        "Business as Usual (BAU)": "bau",
+        "Optimistic": "opt",
+        "Pessimistic": "pes",
+    }[scenario]
 
     # ── Build comparison dataframe across years ──────────────────────────
     stress_categories = [
@@ -629,10 +686,7 @@ def page_sq3():
 
         c1, c2, c3 = st.columns(3)
         c1.metric("NA Catchments Analyzed", f"{total:,}")
-        c2.metric(
-            "High/Extreme Stress (2030)",
-            f"{high_2030:,}",
-        )
+        c2.metric("High/Extreme Stress (2030)", f"{high_2030:,}")
         c3.metric(
             "High/Extreme Stress (2080)",
             f"{high_2080:,}",
@@ -704,7 +758,7 @@ def page_sq3():
     year_choice = st.selectbox(
         "Select projection year:", ["2030", "2050", "2080"]
     )
-    year_code = year_choice[2:]  # "30", "50", "80"
+    year_code = year_choice[2:]
     score_col = f"{scenario_prefix}{year_code}_ws_x_s"
 
     if score_col in future.columns:
@@ -743,6 +797,46 @@ def page_sq3():
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# PAGE: DATASET
+# ══════════════════════════════════════════════════════════════════════════
+
+def page_dataset():
+    st.title("Data Sources")
+
+    st.markdown(
+        """
+        This dashboard combines multiple publicly available datasets.
+
+        ### IM3 Data Center Atlas (PNNL / DOE)
+        Comprehensive inventory of U.S. data centers, including facility locations,
+        capacities, and operating characteristics.
+
+        🔗 https://data.msdlive.org/records/65g71-a4731
+
+        ---
+
+        ### EPA eGRID 2023
+        Electricity grid emissions and generation data from the U.S. Environmental Protection Agency.
+
+        🔗 https://www.epa.gov/egrid
+
+        ---
+
+        ### WRI Aqueduct 4.0
+        Global water risk dataset from the World Resources Institute, including baseline and future water stress.
+
+        🔗 https://www.wri.org/applications/aqueduct/water-risk-atlas/
+
+        ---
+
+        **30538 Final Project — UChicago Harris**
+
+        © 2026 Ankit Dixit and Manav Mutneja
+        """
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # DISPATCH
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -751,6 +845,7 @@ page_fn = {
     "SQ1: Carbon Intensity": page_sq1,
     "SQ2: Water Stress": page_sq2,
     "SQ3: Future Projections": page_sq3,
+    "Dataset": page_dataset,
 }
 
 page_fn[selected_page]()
@@ -759,13 +854,8 @@ page_fn[selected_page]()
 st.sidebar.markdown("---")
 st.sidebar.markdown(
     """
-    **Data Sources:**
-    - [IM3 Data Center Atlas](https://data.msdlive.org/records/65g71-a4731) (PNNL/DOE)
-    - [EPA eGRID 2023](https://www.epa.gov/egrid)
-    - [WRI Aqueduct 4.0](https://www.wri.org/applications/aqueduct/water-risk-atlas/)
-
     *30538 Final Project — UChicago Harris*
-    
+
     © 2026 Ankit Dixit and Manav Mutneja
     """
 )
