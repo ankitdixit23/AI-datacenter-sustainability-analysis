@@ -1,35 +1,46 @@
 # Python
 __pycache__/
 *.py[cod]
-*.egg-info/
-*.egg
-dist/
-build/
+*$py.class
 
 # Virtual environments
-venv/
 .venv/
+venv/
 env/
+ENV/
+conda-env/
+.python-version
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Jupyter
+# Jupyter / Quarto / notebooks
 .ipynb_checkpoints/
 
-# Quarto
-/.quarto/
-*_files/
+# Streamlit
+.streamlit/secrets.toml
 
-# Census boundary shapefiles (cached by generate_charts.py)
-data/shapefiles/
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
 
-# Large raw data files — excluded from git (too large for GitHub)
-data/Data/
+# Testing / cache / build
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+
+# Local large/raw data (keep deployed app data tracked if app needs it)
+data/
+data/raw-data/
+*.parquet
+
+# Optional local exports
+*.tmp
+*.bak
